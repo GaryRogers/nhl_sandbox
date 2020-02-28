@@ -1,2 +1,3 @@
 .vscode
 data/*.csv
+api_data/*.json
