@@ -68,6 +68,12 @@ faceoff_df.head(5)
 
 select_player = 'Patrice Bergeron'
 
-faceoff_df.loc[lambda p: (p['winner'] == select_player) | (p['loser'] == select_player)]
+player_faceoffs_df = faceoff_df.loc[lambda p: (p['winner'] == select_player) | (p['loser'] == select_player)]
+
+player_faceoffs_df.head(20)
+
+# %%
+
+player_faceoffs_df.groupby(['winner']).count()
 
 # %%
