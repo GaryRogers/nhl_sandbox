@@ -165,17 +165,18 @@ def import_schedule(season: int, **kwargs):
 
 
 parser = argparse.ArgumentParser(description='Download NHL API data to local directory')
-parser.add_argument('--type', help='Type of data to pull')
+parser.add_argument('--type', help='Type of data to pull [game|schedule]')
 parser.add_argument('--key', help='Key for the data to pull from the API')
 parser.add_argument('--directory', help='Directory to output to')
 
 args = parser.parse_args()
 
-if args.type == 'game':
+if str(args.type).lower == 'game':
     import_game(args.key, directory=args.directory)
+    exit(0)
 
-#import_games(2019)
-#import_schedule(20192020)
+if str(args.type).lower() == 'schedule':
+    import_schedule(args.key, directory=args.directory)
+    exit(0)
 
-#for game_id in bruins_game_ids:
-#    import_game(game_id)
+parser.print_help()
