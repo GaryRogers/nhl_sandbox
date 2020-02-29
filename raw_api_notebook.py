@@ -2,7 +2,7 @@
 # # NHL API Data Notebook
 
 # %% [markdown]
-# NHL Raw Game Data Playground
+# ## NHL Raw Game Data Playground
 #
 # Looking to poke at the NHL game data you can get from the api.
 #
@@ -17,7 +17,7 @@ import pandas as pd
 from pandas.io.json import json_normalize
 import json
 
-filename = 'api_data/game_2019020001.json'
+filename = 'api_data/game_2019020010.json'
 
 with open(filename) as json_file:
     game_data = json.load(json_file)
@@ -39,7 +39,7 @@ df_players.head(5)
 #
 # Pull in the allPlays data and massage it to get a list of faceoffs for the game
 
-# %%
+# %% [code]
 
 plays = json_normalize(game_data['liveData']['plays']['allPlays'])
 
@@ -59,6 +59,15 @@ for i, p in players_list.items():
 
 faceoff_df = pd.DataFrame.from_dict(faceoff_list)
 
-faceoff_df
+faceoff_df.head(5)
+
+# %% [markdown]
+# Filter things down to a particular player
+
+# %% [code]
+
+select_player = 'Patrice Bergeron'
+
+faceoff_df.loc[lambda p: (p['winner'] == select_player) | (p['loser'] == select_player)]
 
 # %%
