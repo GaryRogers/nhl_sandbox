@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import pathlib
 import requests
-import pandas as pd
+import argparse
+
 
 # https://gitlab.com/dword4/nhlapi
 
@@ -91,21 +93,47 @@ bruins_game_ids = [
     2019021260
  ]
 
-def import_conferences():
+def _prep_directory(directory: str):
+    pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+
+def import_conferences(**kwargs):
+    args = { "directory": 'api_data' }
+    
+    if kwargs is not None:
+        for key, value in kwargs.iteritems():
+            if value != None:
+                args[key] = value
+    
     response = requests.get("{0}/conferences".format(base_url))
 
-    file = open('api_data/conferences.json', 'w')
+    _prep_directory(args['directory'])
+    file = open('{0}}/conferences.json'.format(args['directory']), 'w')
     file.write(response.text)
     file.close
 
-def import_divisions():
+def import_divisions(**kwargs):
+    args = { "directory": 'api_data' }
+    
+    if kwargs is not None:
+        for key, value in kwargs.iteritems():
+            if value != None:
+                args[key] = value
+
     response = requests.get("{0}/divisions".format(base_url))
 
-    file = open('api_data/divisions.json', 'w')
+    _prep_directory(args['directory'])
+    file = open('{0}}/divisions.json'.format(args['directory']), 'w')
     file.write(response.text)
     file.close
 
-def import_game(game_id: int):
+def import_game(game_id: int, **kwargs):
+    args = { "directory": 'api_data', 'game_id': game_id }
+    
+    if kwargs is not None:
+        for key, value in kwargs.items():
+            if value != None:
+                args[key] = value
+
     url = "{0}/game/{1}/feed/live".format(base_url, game_id)
 
     print("getting url: {0}".format(url))
@@ -115,16 +143,36 @@ def import_game(game_id: int):
     print("Response status: {0}".format(response.status_code))
 
     if response.status_code == 200:
-        file = open('api_data/game_{0}.json'.format(game_id), 'w')
+        _prep_directory(args['directory'])
+        file = open('{0}/game_{1}.json'.format(args['directory'], args['game_id']), 'w')
         file.write(response.text)
         file.close
 
-def import_schedule(season: int):
+def import_schedule(season: int, **kwargs):
+    args = { "directory": 'api_data', 'season': season }
+    
+    if kwargs is not None:
+        for key, value in kwargs.iteritems():
+            if value != None:
+                args[key] = value
+
     response = requests.get("{0}/schedule?season={1}".format(base_url, season))
 
-    file = open('api_data/season_{0}.json'.format(season), 'w')
+    _prep_directory(args['directory'])
+    file = open('{0}/season_{1}.json'.format(args['directory']. args['season']), 'w')
     file.write(response.text)
     file.close
+
+
+parser = argparse.ArgumentParser(description='Download NHL API data to local directory')
+parser.add_argument('--type', help='Type of data to pull')
+parser.add_argument('--key', help='Key for the data to pull from the API')
+parser.add_argument('--directory', help='Directory to output to')
+
+args = parser.parse_args()
+
+if args.type == 'game':
+    import_game(args.key, directory=args.directory)
 
 #import_games(2019)
 #import_schedule(20192020)
