@@ -179,4 +179,9 @@ if str(args.type).lower() == 'schedule':
     import_schedule(args.key, directory=args.directory)
     exit(0)
 
+if str(args.type).lower() == 'bruins_games':
+    for gameId in bruins_game_ids:
+        import_game(gameId, directory=args.directory)
+    exit(0)
+
 parser.print_help()
