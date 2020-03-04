@@ -294,7 +294,7 @@ def parse_faceoff_data(data: dict) -> dict:
             players = _decode_players(play['players'])
             temp_object = {
                 "game_id":          game_data['game_id'],
-                "season":           game_data['season'],
+                "season":           int(game_data['season']),
                 "game_start_time":  game_data['game_start_time'],
                 "game_tz":          game_data['game_tz'],
                 "play_id":          play['about']['eventIdx'],
