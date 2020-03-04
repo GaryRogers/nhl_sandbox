@@ -22,6 +22,8 @@ game_data = {
     "away_team": None,
 }
 
+home_players = []
+away_players = []
 penalty_array = []
 
 
@@ -58,10 +60,17 @@ def parse_player_data(data: dict) -> dict:
     #   "team": "",             # g['gameData']['players'][x]['currentTeam']['triCode']
     #   "primaryPosition: "",   # g['gameData']['players'][x]['primaryPosition']['abbreviation']
     # }
+    global home_players
+    global away_players
 
     returnList = []
 
     for key, player in data['gameData']['players'].items():
+        if player['currentTeam']['triCode'] == game_data['home_team']:
+            home_players.append(player['fullName'])
+        else:
+            away_players.append(player['fullName'])
+
         returnList.append({
             "id": player['id'],
             "fullName": player['fullName'],
@@ -200,6 +209,27 @@ def load_game_file(filename: str) -> dict:
     return game_data
 
 
+def _decode_players(players: List) -> dict:
+    return_dict = {
+        "home_player": None,
+        "away_player": None,
+        "winning_player": None,
+        "losing_player": None
+    }
+
+    for player in players:
+        if player['playerType'] == 'Winner':
+            return_dict['winning_player'] = player['player']['fullName']
+        else:
+            return_dict['losing_player'] = player['player']['fullName']
+
+        if player['player']['fullName'] in home_players:
+            return_dict['home_player'] = player['player']['fullName']
+        else:
+            return_dict['away_player'] = player['player']['fullName']
+
+    return return_dict
+
 def larv_faceoff_data(data: dict) -> dict:
     # Faceoff Normalized
     # {
@@ -227,6 +257,7 @@ def larv_faceoff_data(data: dict) -> dict:
 
     for play in data['liveData']['plays']['allPlays']:
         if play['result']['eventTypeId'] == 'FACEOFF':
+            players = _decode_players(play['players'])
             temp_object = {
                 "game_id":          game_data['game_id'],
                 "season":           game_data['season'],
@@ -237,15 +268,15 @@ def larv_faceoff_data(data: dict) -> dict:
                 "period":           play['about']['period'],
                 "home_team":        game_data['home_team'],
                 "away_team":        game_data['away_team'],
-                "home_player":      None, #play['players'],
-                "away_player":      None, #play['players'],
+                "home_player":      players['home_player'],
+                "away_player":      players['away_player'],
                 "coordinates":      play['coordinates'],
                 "zone":             "HOME_ATTACKING|NEUTRAL|HOME_DEFENSIVE",
                 "home_score":       play['about']['goals']['home'],
                 "away_score":       play['about']['goals']['away'],
                 "power_play":       _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']),
-                "winning_player":   None, #play['players'],
-                "losing_player":    None, #play['players'],
+                "winning_player":   players['winning_player'],
+                "losing_player":    players['losing_player']
             }
 
             return_list.append(temp_object)
