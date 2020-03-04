@@ -13,6 +13,10 @@ import math
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+home_team = None
+away_team = None
+penalty_array = []
+
 # [TODO] Get PP/PKs and times into lists for lookup.
 #   allPlays['penaltyPlays']
 
@@ -48,6 +52,12 @@ def parse_game_data(data: dict) -> dict:
     #   "home_team": "",        # g['gameData']['teams']['home']['abbreviation']
     #   "away_team": "",        # g['gameData']['teams']['away']['abbreviation']
     # }
+    global home_team
+    global away_team
+
+    home_team = data['gameData']['teams']['home']['abbreviation']
+    away_team = data['gameData']['teams']['away']['abbreviation']
+
     return {
         "game_id": data['gameData']['game']['pk'],
         "season": data['gameData']['game']['season'],
@@ -89,7 +99,7 @@ def _compute_penalty_end_seconds(penalty_minutes: int, period: int, start_time: 
     # depending on where the end_time ends determines the period
     # You can apply this if you calculate game_seconds for a play
     
-    match = re.match('^(\d+):(\d+)', start_time)
+    match = re.match(r'^(\d+):(\d+)', start_time)
     minutes = match[1]
     seconds = match[2]
 
@@ -114,6 +124,37 @@ def _seconds_to_game_time(seconds: int) -> str:
     return '{0}|{1}'.format(period, period_time)
 
 
+def _game_time_to_seconds(period: int, game_time: str) -> int:
+    match = re.match(r'^(\d+):(\d+)', game_time)
+    minutes = match[1]
+    seconds = match[2]
+
+    period_seconds = (period - 1) * 1200
+    minute_seconds = int(minutes) * 60
+
+    return int(period_seconds) + int(minute_seconds) + int(seconds)
+
+
+def _invert_team(team: str) -> str:
+    if team == home_team:
+        return away_team
+
+    if team == away_team:
+        return home_team
+
+def _on_powerplay(game_seconds: int, play_type: str) -> str:
+    global penalty_array
+
+    for play in penalty_array:
+        if game_seconds >= play['start_time'] and game_seconds <= play['end_time']:
+            if play_type == 'GOAL' and play['penaltySeverity'] == 'Minor':
+                play['end_time'] = game_seconds
+
+            return _invert_team(play['team'])
+
+    return None
+
+
 def parse_power_play_data(data: dict) -> dict:
     # {
     #   "eventIdx": int,
@@ -124,41 +165,47 @@ def parse_power_play_data(data: dict) -> dict:
     #   "start_time": "",
     #   "end_time": ""
     # }
-
-    penalty_ids = data['liveData']['plays']['penaltyPlays']
+    global penalty_array
 
     returnList = []
 
-    current_pp = False
-    pp_end_seconds = 0
-
     for play in data['liveData']['plays']['allPlays']:
         if play['result']['eventTypeId'] == 'PENALTY':
-            current_pp = True
             pp_end_seconds = _compute_penalty_end_seconds(play['result']['penaltyMinutes'], play['about']['period'], play['about']['periodTime'])
-            returnList.append({
+            play_event = {
                 "eventIdx": play['about']['eventIdx'],
                 "team": play['team']['triCode'],
+                "penaltySeverity": play['result']['penaltySeverity'],
                 "period": play['about']['period'],
                 "description": play['result']['description'],
                 "penaltyMinutes": play['result']['penaltyMinutes'],
-                "start_time": play['about']['periodTime'],
-                "end_time": _seconds_to_game_time(pp_end_seconds)
-            })
-    
+                "start_time": _game_time_to_seconds(play['about']['period'], play['about']['periodTime']),
+                "end_time": pp_end_seconds
+            }
+            penalty_array.append(play_event)
+        else:
+            pp_team = _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId'])
+            if pp_team:
+                    returnList.append({
+                        "eventIdx": play['about']['eventIdx'],
+                        #"team": play['team']['triCode'],
+                        "period": play['about']['period'],
+                        "description": play['result']['description'],
+                        "penaltyMinutes": 0,
+                        "start_time": _game_time_to_seconds(play['about']['period'], play['about']['periodTime']),
+                        'powerplay': pp_team
+                    })
+            
     return returnList
 
 
 def get_zone_info(x: float, y: float, period: int) -> str:
     raise NotImplementedError
 
+
 def get_player_info(id: int) -> dict:
     raise NotImplementedError
 
-def is_power_play(id: int) -> str:
-    # Return the Team TriCode that is on the PP
-    # Will need to compute based on the Penalty event and time
-    raise NotImplementedError
 
 def load_game_file(filename: str) -> dict:
     logger.info('Normalizing file: {0}'.format(filename))
