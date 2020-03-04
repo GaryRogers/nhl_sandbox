@@ -230,6 +230,25 @@ def _decode_players(players: List) -> dict:
 
     return return_dict
 
+
+def _compute_zone(x: float, period: int) -> str:
+    if x >= -50 and x <= 50:
+        return 'NEUTRAL_ZONE'
+    
+    if int(period) in [1,3]:
+        if x < -50:
+            return 'HOME_DEFENDING_ZONE'
+        if x > 50:
+            return 'HOME_ATTACKING_ZONE'
+    if int(period) in [2, 4]:
+        if x < -50:
+            return 'HOME_ATTACKING_ZONE'
+        if x > 50:
+            return 'HOME_DEFENDING_ZONE'
+
+    return None
+    
+
 def larv_faceoff_data(data: dict) -> dict:
     # Faceoff Normalized
     # {
@@ -271,7 +290,7 @@ def larv_faceoff_data(data: dict) -> dict:
                 "home_player":      players['home_player'],
                 "away_player":      players['away_player'],
                 "coordinates":      play['coordinates'],
-                "zone":             "HOME_ATTACKING|NEUTRAL|HOME_DEFENSIVE",
+                "zone":             _compute_zone(play['coordinates']['x'], play['about']['period']),
                 "home_score":       play['about']['goals']['home'],
                 "away_score":       play['about']['goals']['away'],
                 "power_play":       _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']),
