@@ -231,46 +231,61 @@ def _decode_players(players: List) -> dict:
     return return_dict
 
 
-def _compute_zone(x: float, period: int) -> str:
+def _compute_zone(x: float, period: int, winning_player: str) -> str:
     if x >= -50 and x <= 50:
         return 'NEUTRAL_ZONE'
-    
-    if int(period) in [1,3]:
-        if x < -50:
-            return 'HOME_DEFENDING_ZONE'
-        if x > 50:
-            return 'HOME_ATTACKING_ZONE'
-    if int(period) in [2, 4]:
-        if x < -50:
-            return 'HOME_ATTACKING_ZONE'
-        if x > 50:
-            return 'HOME_DEFENDING_ZONE'
+
+    home_player = False
+    home_player = ( winning_player in home_players )
+
+    if home_player:
+        if int(period) in [1,3]:
+            if x < -50:
+                return 'HOME_DEFENDING_ZONE'
+            if x > 50:
+                return 'HOME_ATTACKING_ZONE'
+        if int(period) in [2, 4]:
+            if x < -50:
+                return 'HOME_ATTACKING_ZONE'
+            if x > 50:
+                return 'HOME_DEFENDING_ZONE'
+    else:
+        if int(period) in [1,3]:
+            if x < -50:
+                return 'AWAY_ATTACKING_ZONE'
+            if x > 50:
+                return 'AWAY_DEFENDING_ZONE'
+        if int(period) in [2, 4]:
+            if x < -50:
+                return 'AWAY_DEFENDING_ZONE'
+            if x > 50:
+                return 'AWAY_ATTACKING_ZONE'
 
     return None
     
 
-def larv_faceoff_data(data: dict) -> dict:
+def parse_faceoff_data(data: dict) -> dict:
     # Faceoff Normalized
-    # {
-    #   "game_id": int,                 # g['gameData']['game']['pk']
-    #   "season": int,                  # g['gameData']['game']['season']
-    #   "game_start_time": "",          # g['gameData']['datetime']['dateTime']
-    #   "game_tz": "",                  # g['gameData']['teams']['home']['venue']['timeZone']['tz']
-    #   "play_id": int,                 # g['liveData']['plays']['allPlays'][x]['about']['eventIdx']
-    #   "description": "",              # g['liveData']['plays']['allPlays'][x]['result']['description']
-    #   "period": int,                  # g['liveData']['plays']['allPlays'][x]['about']['period']
-    #   "home_team": "",                # g['gameData']['teams']['home']['abbreviation']
-    #   "away_team": "",                # g['gameData']['teams']['away']['abbreviation']
-    #   "home_player": "",              # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-    #   "away_player": "",              # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-    #   "coordinates": [float, float],  # g['liveData']['plays']['allPlays'][x]['coordinates']['x']/['y']
-    #   "zone": "HOME_ATTACKING|NEUTRAL|HOME_DEFENSIVE", # function g['liveData']['plays']['allPlays'][x]['coordinates']
-    #   "home_score": int,              # g['liveData']['plays']['allPlays'][x]['about']['goals']['home']
-    #   "away_score": int,              # g['liveData']['plays']['allPlays'][x]['about']['goals']['away']
-    #   "power_play": "team id",        # function g['liveData]['plays']['allPlays'][x]['eventIdx']
-    #   "winning_player": "",           # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-    #   "losing_player": "",            # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-    # }
+        # {
+        #   "game_id": int,                 # g['gameData']['game']['pk']
+        #   "season": int,                  # g['gameData']['game']['season']
+        #   "game_start_time": "",          # g['gameData']['datetime']['dateTime']
+        #   "game_tz": "",                  # g['gameData']['teams']['home']['venue']['timeZone']['tz']
+        #   "play_id": int,                 # g['liveData']['plays']['allPlays'][x]['about']['eventIdx']
+        #   "description": "",              # g['liveData']['plays']['allPlays'][x]['result']['description']
+        #   "period": int,                  # g['liveData']['plays']['allPlays'][x]['about']['period']
+        #   "home_team": "",                # g['gameData']['teams']['home']['abbreviation']
+        #   "away_team": "",                # g['gameData']['teams']['away']['abbreviation']
+        #   "home_player": "",              # function g['liveData']['plays']['allPlays']['plays'][x]['players']
+        #   "away_player": "",              # function g['liveData']['plays']['allPlays']['plays'][x]['players']
+        #   "coordinates": [float, float],  # g['liveData']['plays']['allPlays'][x]['coordinates']['x']/['y']
+        #   "zone": "HOME_ATTACKING|NEUTRAL|HOME_DEFENSIVE", # function g['liveData']['plays']['allPlays'][x]['coordinates']
+        #   "home_score": int,              # g['liveData']['plays']['allPlays'][x]['about']['goals']['home']
+        #   "away_score": int,              # g['liveData']['plays']['allPlays'][x]['about']['goals']['away']
+        #   "power_play": "team id",        # function g['liveData]['plays']['allPlays'][x]['eventIdx']
+        #   "winning_player": "",           # function g['liveData']['plays']['allPlays']['plays'][x]['players']
+        #   "losing_player": "",            # function g['liveData']['plays']['allPlays']['plays'][x]['players']
+        # }
 
     return_list = []
 
@@ -290,7 +305,7 @@ def larv_faceoff_data(data: dict) -> dict:
                 "home_player":      players['home_player'],
                 "away_player":      players['away_player'],
                 "coordinates":      play['coordinates'],
-                "zone":             _compute_zone(play['coordinates']['x'], play['about']['period']),
+                "zone":             _compute_zone(play['coordinates']['x'], play['about']['period'], players['winning_player']),
                 "home_score":       play['about']['goals']['home'],
                 "away_score":       play['about']['goals']['away'],
                 "power_play":       _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']),
@@ -303,59 +318,6 @@ def larv_faceoff_data(data: dict) -> dict:
     return return_list
 
 
-def normalize_faceoff_data(filename: str) -> List[str]:
-    logger.info('Normalizing file: {0}'.format(filename))
-
-    with open(filename) as json_file:
-        game_data = json.load(json_file)
-
-    gameId = game_data['gamePk']
-
-    plays = json_normalize(game_data['liveData']['plays']['allPlays'])
-
-    plays_list = plays.loc[lambda r: r['result.event'] == 'Faceoff']
-
-    faceoff_list = []
-
-    for i, p in plays_list.iterrows():
-        play_object = { 
-            'winner': None, 
-            'loser': None, 
-            'gameId': gameId, 
-            'period': p['about.period']
-        }
-        
-        players_list = p['players']
-        
-        for player in players_list:
-            if player['playerType'] == 'Winner':
-                play_object['winner'] = player['player']['fullName']
-            else:
-                play_object['loser'] = player['player']['fullName']
-            
-        faceoff_list.append(play_object)
-
-    faceoff_df = pd.DataFrame.from_dict(faceoff_list)
-
-    select_player = 'Patrice Bergeron'
-
-    player_faceoffs = faceoff_df.loc[lambda p: (p['winner'] == select_player) | (p['loser'] == select_player)]
-
-    faceoff_count = player_faceoffs.groupby(['winner','period','gameId']).count()
-
-    normalized_faceoffs = []
-
-    for i, p in faceoff_count.iterrows():
-        row = { 'Name': i[0], 'faceoff_win_count': p.values[0], 'gameId': i[2], 'period': i[1] }
-        normalized_faceoffs.append(row)
-
-    normalized_faceoffs_df = pd.DataFrame.from_dict(normalized_faceoffs)
-
-    outfile = open("data/faceoff_normalized.csv", "a")
-    outfile.write(normalized_faceoffs_df.to_csv(index=False))
-    outfile.close()
-
-
 game_dict = load_game_file('api_data/game_2019020010.json')
 
 game_data = parse_game_data(game_dict)
@@ -364,11 +326,9 @@ player_data = parse_player_data(game_dict)
 
 pp_data = parse_power_play_data(game_dict)
 
-faceoff_data = larv_faceoff_data(game_dict)
+faceoff_data = parse_faceoff_data(game_dict)
 
 print(json.dumps(faceoff_data, indent=2))
-
-
 
 #files = glob.glob("api_data/game*.json")
 
