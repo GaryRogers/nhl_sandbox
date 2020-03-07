@@ -10,20 +10,17 @@
 import pandas as pd
 import json
 
-df1 = pd.read_json('data/faceoff_20192020020010.json')
-df2 = pd.read_json('data/faceoff_20192020020027.json')
-df3 = pd.read_json('data/faceoff_20192020020043.json')
-
-df = df1
-df = df.append(df2, ignore_index=True)
-df = df.append(df3, ignore_index=True)
+df = pd.read_csv('data/faceoff_data.csv')
 
 df.tail(20)
 
 # %%
 
-df.loc[df['player'] == 'Patrice Bergeron'].groupby('zone')['zone'].count()
+df.groupby('player').agg({'player': ['count']}).reset_index()
 
+# %%
+
+df.loc[df['player'] == 'Patrice Bergeron'].groupby('zone')['zone'].count()
 
 # %%
 
