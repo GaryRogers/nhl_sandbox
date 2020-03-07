@@ -9,6 +9,8 @@ import logging
 import re
 import datetime
 import math
+import argparse
+import pandas as pd
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -25,61 +27,6 @@ game_data = {
 home_players = []
 away_players = []
 penalty_array = []
-
-
-def parse_game_data(data: dict) -> dict:
-    # Game Normalized
-    # {
-    #   "game_id": int,         # g['gameData']['game']['pk']
-    #   "season": int,          # g['gameData']['game']['season']
-    #   "game_start_time": "",  # g['gameData']['datetime']['dateTime']
-    #   "game_tz": "",          # g['gameData']['teams']['home']['venue']['timeZone']['tz']
-    #   "home_team": "",        # g['gameData']['teams']['home']['abbreviation']
-    #   "away_team": "",        # g['gameData']['teams']['away']['abbreviation']
-    # }
-    global game_data
-
-    game_data = {
-        "game_id": data['gameData']['game']['pk'],
-        "season": data['gameData']['game']['season'],
-        "game_start_time": data['gameData']['datetime']['dateTime'],
-        "game_tz": data['gameData']['teams']['home']['venue']['timeZone']['tz'],
-        "home_team": data['gameData']['teams']['home']['abbreviation'],
-        "away_team": data['gameData']['teams']['away']['abbreviation']
-    }
-
-    return game_data
-    
-
-def parse_player_data(data: dict) -> dict:
-    # Players Normalized
-    # {
-    #   "id": int,              # g['gameData']['players'][x]['id']
-    #   "fullName": "",         # g['gameData']['players'][x]['fullName']
-    #   "shootsCatches: "",     # g['gameData']['players'][x]['shootsCatches']
-    #   "team": "",             # g['gameData']['players'][x]['currentTeam']['triCode']
-    #   "primaryPosition: "",   # g['gameData']['players'][x]['primaryPosition']['abbreviation']
-    # }
-    global home_players
-    global away_players
-
-    returnList = []
-
-    for key, player in data['gameData']['players'].items():
-        if player['currentTeam']['triCode'] == game_data['home_team']:
-            home_players.append(player['fullName'])
-        else:
-            away_players.append(player['fullName'])
-
-        returnList.append({
-            "id": player['id'],
-            "fullName": player['fullName'],
-            "shootsCatches": player['shootsCatches'],
-            "team": player['currentTeam']['triCode'],
-            "primaryPosition": player['primaryPosition']['abbreviation']
-        })
-
-    return returnList
 
 
 def _compute_penalty_end_seconds(penalty_minutes: int, period: int, start_time: str) -> int:
@@ -100,6 +47,16 @@ def _compute_penalty_end_seconds(penalty_minutes: int, period: int, start_time: 
 
 
 def _seconds_to_game_time(seconds: int) -> str:
+    """Convert seconds since start of game to a string
+
+    ## Parameters
+    
+    - seconds: int - Seconds since the start of the game
+
+    ## Returns
+    
+    - string - "period|mm:ss" The Period, period minutes and seconds
+    """
     # periods are 1200 seconds (regular season OT will still work)
     # Ceil gives us a 'round up'
     period = math.ceil(seconds/1200)
@@ -115,6 +72,19 @@ def _seconds_to_game_time(seconds: int) -> str:
 
 
 def _game_time_to_seconds(period: int, game_time: str) -> int:
+    """Converts game time to seconds since start of game
+
+    Converts the period, minutes and seconds to seconds since the start of the game.
+
+    ## Parameters
+    
+    - period: int - The period to convert
+    - game_time: str - The mm:ss of the period to convert
+
+    ## Returns
+
+    - int - The seconds since the start of the game
+    """
     match = re.match(r'^(\d+):(\d+)', game_time)
     minutes = match[1]
     seconds = match[2]
@@ -126,6 +96,17 @@ def _game_time_to_seconds(period: int, game_time: str) -> int:
 
 
 def _invert_team(team: str) -> str:
+    """ Return the opposing tesm
+
+    ## Parameters
+
+    - team: str - The team to get the opponent for
+
+    ## Returns
+
+    - str - The opposing team
+
+    """
     if team == game_data['home_team']:
         return game_data['away_team']
 
@@ -134,6 +115,21 @@ def _invert_team(team: str) -> str:
 
 
 def _on_powerplay(game_seconds: int, play_type: str) -> str:
+    """Return the team currently on the power play
+
+    Inspect the `penalty_array` global to see if the play occurs during a powerplay.
+
+    If the play type is a scoring play this may end the power play in the `penalty_array`
+
+    ## Parameters
+
+    - game_seconds: int - The seconds since the start of the game
+    - play_type: str - The play type to check
+
+    ## Retruns
+
+    - string: The team that is currently on the power play
+    """
     global penalty_array
 
     for play in penalty_array:
@@ -146,7 +142,95 @@ def _on_powerplay(game_seconds: int, play_type: str) -> str:
     return None
 
 
+def _decode_players(players: List) -> dict:
+    """Return a simplified dictionary of faceoff players
+
+    Simplifies the NHL players array for a faceoff play
+
+    ## Parameters
+
+    - players: List - The players list from the play['players'] array
+
+    ## Return
+
+    - dict: Simplified dictionary of players for the play
+
+    """
+    return_dict = {
+        "home_player": None,
+        "away_player": None,
+        "winning_player": None,
+        "losing_player": None
+    }
+
+    for player in players:
+        if player['playerType'] == 'Winner':
+            return_dict['winning_player'] = player['player']['fullName']
+        else:
+            return_dict['losing_player'] = player['player']['fullName']
+
+        if player['player']['fullName'] in home_players:
+            return_dict['home_player'] = player['player']['fullName']
+        else:
+            return_dict['away_player'] = player['player']['fullName']
+
+    return return_dict
+
+
+def _compute_zone(x: float, period: int, player: str) -> str:
+    """Compute the zone name for a player and period
+
+    Compute the ATTACKING_ZONE, DEFENDING_ZONE or NEUTRAL_ZONE based on the x coordinate.
+
+    Since ATTACKING/DEFENDING depend on period and team this can be a little hairy
+
+    ## Parameters
+
+    - x: int - The x coordinate provides by the play['coordinates'] list in the NHL API
+    - period: int - The period to calculate for.
+    - player: string - The player to calculate for. (accounts for team)
+
+    ## Returns
+
+    string - ATTACKING_ZONE, DEFENDING_ZONE, NEUTRAL_ZONE
+
+    """
+    if x >= -50 and x <= 50:
+        return 'NEUTRAL_ZONE'
+
+    home_player = False
+    home_player = ( player in home_players )
+
+    if int(period) in [1,3,5,7,9]:
+        if home_player:
+            if x < -50:
+                return 'DEFENDING_ZONE'
+            if x > 50:
+                return 'ATTACKING_ZONE'
+        else:
+            if x < -50:
+                return 'ATTACKING_ZONE'
+            if x > 50:
+                return 'DEFENDING_ZONE'
+    else:
+        if home_player:
+            if x < -50:
+                return 'ATTACKING_ZONE'
+            if x > 50:
+                return 'DEFENDING_ZONE'
+        else:
+            if x < -50:
+                return 'DEFENDING_ZONE'
+            if x > 50:
+                return 'ATTACKING_ZONE'
+
+    return None
+
+
 def parse_power_play_data(data: dict) -> dict:
+    """Extract powerplay data from NHL API Data
+
+    """
     # {
     #   "eventIdx": int,
     #   "team": "",
@@ -209,60 +293,60 @@ def load_game_file(filename: str) -> dict:
     return game_data
 
 
-def _decode_players(players: List) -> dict:
-    return_dict = {
-        "home_player": None,
-        "away_player": None,
-        "winning_player": None,
-        "losing_player": None
+def parse_game_data(data: dict) -> dict:
+    # Game Normalized
+    # {
+    #   "game_id": int,         # g['gameData']['game']['pk']
+    #   "season": int,          # g['gameData']['game']['season']
+    #   "game_start_time": "",  # g['gameData']['datetime']['dateTime']
+    #   "game_tz": "",          # g['gameData']['teams']['home']['venue']['timeZone']['tz']
+    #   "home_team": "",        # g['gameData']['teams']['home']['abbreviation']
+    #   "away_team": "",        # g['gameData']['teams']['away']['abbreviation']
+    # }
+    global game_data
+
+    game_data = {
+        "game_id": data['gameData']['game']['pk'],
+        "season": data['gameData']['game']['season'],
+        "game_start_time": data['gameData']['datetime']['dateTime'],
+        "game_tz": data['gameData']['teams']['home']['venue']['timeZone']['tz'],
+        "home_team": data['gameData']['teams']['home']['abbreviation'],
+        "away_team": data['gameData']['teams']['away']['abbreviation']
     }
 
-    for player in players:
-        if player['playerType'] == 'Winner':
-            return_dict['winning_player'] = player['player']['fullName']
-        else:
-            return_dict['losing_player'] = player['player']['fullName']
-
-        if player['player']['fullName'] in home_players:
-            return_dict['home_player'] = player['player']['fullName']
-        else:
-            return_dict['away_player'] = player['player']['fullName']
-
-    return return_dict
-
-
-def _compute_zone(x: float, period: int, winning_player: str) -> str:
-    if x >= -50 and x <= 50:
-        return 'NEUTRAL_ZONE'
-
-    home_player = False
-    home_player = ( winning_player in home_players )
-
-    if int(period) in [1,3,5,7,9]:
-        if home_player:
-            if x < -50:
-                return 'DEFENDING_ZONE'
-            if x > 50:
-                return 'ATTACKING_ZONE'
-        else:
-            if x < -50:
-                return 'ATTACKING_ZONE'
-            if x > 50:
-                return 'DEFENDING_ZONE'
-    else:
-        if home_player:
-            if x < -50:
-                return 'ATTACKING_ZONE'
-            if x > 50:
-                return 'DEFENDING_ZONE'
-        else:
-            if x < -50:
-                return 'DEFENDING_ZONE'
-            if x > 50:
-                return 'ATTACKING_ZONE'
-
-    return None
+    return game_data
     
+
+def parse_player_data(data: dict) -> dict:
+    # Players Normalized
+    # {
+    #   "id": int,              # g['gameData']['players'][x]['id']
+    #   "fullName": "",         # g['gameData']['players'][x]['fullName']
+    #   "shootsCatches: "",     # g['gameData']['players'][x]['shootsCatches']
+    #   "team": "",             # g['gameData']['players'][x]['currentTeam']['triCode']
+    #   "primaryPosition: "",   # g['gameData']['players'][x]['primaryPosition']['abbreviation']
+    # }
+    global home_players
+    global away_players
+
+    returnList = []
+
+    for key, player in data['gameData']['players'].items():
+        if player['currentTeam']['triCode'] == game_data['home_team']:
+            home_players.append(player['fullName'])
+        else:
+            away_players.append(player['fullName'])
+
+        returnList.append({
+            "id": player['id'],
+            "fullName": player['fullName'],
+            "shootsCatches": player['shootsCatches'],
+            "team": player['currentTeam']['triCode'],
+            "primaryPosition": player['primaryPosition']['abbreviation']
+        })
+
+    return returnList
+
 
 def parse_faceoff_data(data: dict) -> dict:
     # Faceoff Normalized
@@ -329,29 +413,51 @@ def parse_faceoff_data(data: dict) -> dict:
             ap['score_diff'] = play['about']['goals']['away'] - play['about']['goals']['home']
             ap['win'] = ( players['winning_player'] == players['away_player'] )
 
-
             return_list.append(hp)
             return_list.append(ap)
 
     return return_list
 
 
-game_dict = load_game_file('api_data/game_2019020010.json')
+parser = argparse.ArgumentParser(description="Convert NHL API Live data to faceoff data")
+parser.add_argument('--input', help="Input file")
+parser.add_argument('--output', help="Output file")
+parser.add_argument('--format', help="json or csv format")
+parser.add_argument('--header', dest='header', action='store_true')
 
+args = parser.parse_args()
+
+# Load in the game json
+game_dict = load_game_file(args.input)
+
+# Parse the game data. Saved into the `game_data` global
 game_data = parse_game_data(game_dict)
 
+# Parse the player data. Populates the `home_players` and `away_players` global
 player_data = parse_player_data(game_dict)
 
+# Parse the power play data. Saved into the penaly_array global
 pp_data = parse_power_play_data(game_dict)
 
+# Finally parse the faceoff data.
 faceoff_data = parse_faceoff_data(game_dict)
 
-print(json.dumps(faceoff_data, indent=2))
+# Pull the faceoff_data into a dataframe to make it easy to export.
+fo_df = pd.DataFrame.from_dict(faceoff_data)
 
-#files = glob.glob("api_data/game*.json")
+if args.output:
+    if args.format.lower() == 'csv':
+        fo_df.to_csv(args.output, index=False, header=args.header)
+        exit(0)
 
-#for filename in files:
-#    try:
-#        normalize_faceoff_data(filename)
-#    except Exception as ex:
-#        logging.error(ex)
+    if args.format.lower() == 'json':
+        fo_df.to_json(args.output, index=False, header=args.header)
+        exit(0)
+
+if args.format.lower() == 'csv':
+    print(fo_df.to_csv(index=False, header=args.header))
+    exit(0)
+
+if args.format.lower() == 'json':
+    print(fo_df.to_json(index=False, header=args.header))
+    exit(0)
