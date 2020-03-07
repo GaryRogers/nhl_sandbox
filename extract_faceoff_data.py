@@ -227,19 +227,34 @@ def _compute_zone(x: float, period: int, player: str) -> str:
     return None
 
 
-def parse_power_play_data(data: dict) -> dict:
+def parse_power_play_data(data: dict) -> List[dict]:
     """Extract powerplay data from NHL API Data
 
+    Looks over allPlays and computes penelties. Adds to the `penalty_array` global.
+
+    ## Parameters:
+
+    - data: dict - Dictionary of NHL Game data
+
+    ## Returns:
+
+    - List[dict]: Returns list of penalty objects.
+
+    ## Penalty Dictionary:
+
+    ```json
+    {
+      "eventIdx": "int",
+      "team": "string (ex. BOS)",
+      "period": "int",
+      "description": "string",
+      "penaltyMinutes": "int",
+      "start_time": "int (seconds since start of game)",
+      "end_time": "int (seconds since start of game)"
+    }
+    ```
     """
-    # {
-    #   "eventIdx": int,
-    #   "team": "",
-    #   "period": int,
-    #   "description": "",
-    #   "penaltyMinutes": int,
-    #   "start_time": "",
-    #   "end_time": ""
-    # }
+    
     global penalty_array
 
     returnList = []
@@ -274,15 +289,22 @@ def parse_power_play_data(data: dict) -> dict:
     return returnList
 
 
-def get_zone_info(x: float, y: float, period: int) -> str:
-    raise NotImplementedError
-
-
-def get_player_info(id: int) -> dict:
-    raise NotImplementedError
-
-
 def load_game_file(filename: str) -> dict:
+    """ Pull in game file from filesystem
+
+    ## Parameters
+
+    - filename: str - Filename to read. From statsapi.web.nhl.com/api/v1/game
+
+    ## Returns
+
+    - dict: Dictionary structure of NHL game api
+
+    ## Notes
+
+    Check [GitHub](https://gitlab.com/dword4/nhlapi) for API Docs
+
+    """
     logger.info('Normalizing file: {0}'.format(filename))
 
     with open(filename) as json_file:
@@ -294,15 +316,33 @@ def load_game_file(filename: str) -> dict:
 
 
 def parse_game_data(data: dict) -> dict:
-    # Game Normalized
-    # {
-    #   "game_id": int,         # g['gameData']['game']['pk']
-    #   "season": int,          # g['gameData']['game']['season']
-    #   "game_start_time": "",  # g['gameData']['datetime']['dateTime']
-    #   "game_tz": "",          # g['gameData']['teams']['home']['venue']['timeZone']['tz']
-    #   "home_team": "",        # g['gameData']['teams']['home']['abbreviation']
-    #   "away_team": "",        # g['gameData']['teams']['away']['abbreviation']
-    # }
+    """Parse the game specific data from the game dictionary
+
+    Works with `game_data` global to store game data for other functions.
+
+    ## Parameters
+
+    - data: dict - NHL game API dictionary
+
+    ## Returns
+
+    - dict: A dictionary of game data
+
+    ## Notes
+
+    Game Dictonary
+
+    ```json
+    {
+      "game_id": "int",
+      "season": "int",
+      "game_start_time": "string isodate",
+      "game_tz": "string ex: CST",
+      "home_team": "string ex: BOS",
+      "away_team": "string ex: BOS",
+    }
+    ```
+    """
     global game_data
 
     game_data = {
@@ -317,15 +357,29 @@ def parse_game_data(data: dict) -> dict:
     return game_data
     
 
-def parse_player_data(data: dict) -> dict:
-    # Players Normalized
-    # {
-    #   "id": int,              # g['gameData']['players'][x]['id']
-    #   "fullName": "",         # g['gameData']['players'][x]['fullName']
-    #   "shootsCatches: "",     # g['gameData']['players'][x]['shootsCatches']
-    #   "team": "",             # g['gameData']['players'][x]['currentTeam']['triCode']
-    #   "primaryPosition: "",   # g['gameData']['players'][x]['primaryPosition']['abbreviation']
+def parse_player_data(data: dict) -> List[dict]:
+    """Parse and store player data to `home_players` and `away_players` lists
+
+    ## Parameters
+
+    - data: dict - NHL game API dictionary
+
+    ## Returns
+
+    - List[dict]: List of simplified player dictionaries
+
+    ## Player Dictionary
+
+    ```json
+    {
+      "id": "int",
+      "fullName": "string",
+      "shootsCatches: "string",
+      "team": "string ex: BOS",
+      "primaryPosition: "string",
     # }
+    ```
+    """
     global home_players
     global away_players
 
@@ -348,32 +402,48 @@ def parse_player_data(data: dict) -> dict:
     return returnList
 
 
-def parse_faceoff_data(data: dict) -> dict:
-    # Faceoff Normalized
-        # {
-        #   "game_id": int,                 # g['gameData']['game']['pk']
-        #   "season": int,                  # g['gameData']['game']['season']
-        #   "game_start_time": "",          # g['gameData']['datetime']['dateTime']
-        #   "game_tz": "",                  # g['gameData']['teams']['home']['venue']['timeZone']['tz']
-        #   "play_id": int,                 # g['liveData']['plays']['allPlays'][x]['about']['eventIdx']
-        #   "description": "",              # g['liveData']['plays']['allPlays'][x]['result']['description']
-        #   "period": int,                  # g['liveData']['plays']['allPlays'][x]['about']['period']
-        #   "home_team": "",                # g['gameData']['teams']['home']['abbreviation']
-        #   "away_team": "",                # g['gameData']['teams']['away']['abbreviation']
-        #   "home_player": "",              # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-        #   "away_player": "",              # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-        #   "coordinates": [float, float],  # g['liveData']['plays']['allPlays'][x]['coordinates']['x']/['y']
-        #   "zone": "HOME_ATTACKING|NEUTRAL|HOME_DEFENSIVE", # function g['liveData']['plays']['allPlays'][x]['coordinates']
-        #   "home_score": int,              # g['liveData']['plays']['allPlays'][x]['about']['goals']['home']
-        #   "away_score": int,              # g['liveData']['plays']['allPlays'][x]['about']['goals']['away']
-        #   "power_play": "team id",        # function g['liveData]['plays']['allPlays'][x]['eventIdx']
-        #   "winning_player": "",           # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-        #   "losing_player": "",            # function g['liveData']['plays']['allPlays']['plays'][x]['players']
-        # }
+def parse_faceoff_data(data: dict) -> List[dict]:
+    """Parse Faceoff data into a list of faceoff dictionaries
 
+    Main function of the script. Parses the `allPlay` data to extract and normalize the faceoff data.
+
+    Returns two entries per faceoff, one for the winner, one for the loser.
+
+    ## Parameters
+
+    - data: dict - NHL game API dictionary    
+
+    ## Returns
+
+    - List[dict] - List of Faceoff dictionaries
+
+    ## Faceoff Dictionary
+
+    ```json
+    {
+        "game_id": "2019020010",
+        "season": "20192020",
+        "game_start_time": "2019-10-04T00:30:00Z",
+        "game_tz": "CST",
+        "play_id": 3,
+        "game_time": 0,
+        "description": "Patrice Bergeron faceoff won against Tyler Seguin",
+        "period": "1",
+        "coordinates": "0.0,0.0",
+        "player": "Tyler Seguin",
+        "team": "DAL",
+        "opponent": "Patrice Bergeron",
+        "opposing_team": "BOS",
+        "home_ice": true,
+        "power_play": false,
+        "penelty_kill": false,
+        "zone": "NEUTRAL_ZONE",
+        "score_diff": 0,
+        "win": false
+    }
+    ```
+    """
     return_list = []
-
-    # game_id | season | game_start_time | game_tz | play_id | game_time | description | period | coordinates | player | team | opponent | opposing_team | home_ice | power_play | penelty_kill | zone | score_diff | win
 
     for play in data['liveData']['plays']['allPlays']:
         if play['result']['eventTypeId'] == 'FACEOFF':
