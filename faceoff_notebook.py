@@ -1,4 +1,11 @@
 # %%
+# What are the questions I'm trying to answer?
+# - Does Bergy take more faceoffs when the team is losing?
+# - Are there differences in win % in different zones?
+# - Are there differences in faceoofs taken by zone?
+#
+# - This needs to even flatter data
+# - Something closer to olap
 
 import pandas as pd
 import json

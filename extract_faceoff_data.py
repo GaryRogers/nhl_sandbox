@@ -289,36 +289,54 @@ def parse_faceoff_data(data: dict) -> dict:
 
     return_list = []
 
+    # game_id | season | game_start_time | game_tz | play_id | game_time | description | period | coordinates | player | team | opponent | opposing_team | home_ice | power_play | penelty_kill | zone | score_diff | win
+
     for play in data['liveData']['plays']['allPlays']:
         if play['result']['eventTypeId'] == 'FACEOFF':
             players = _decode_players(play['players'])
-            temp_object = {
-                "game_id":          game_data['game_id'],
-                "season":           int(game_data['season']),
-                "game_start_time":  game_data['game_start_time'],
-                "game_tz":          game_data['game_tz'],
-                "play_id":          play['about']['eventIdx'],
-                "description":      play['result']['description'],
-                "period":           play['about']['period'],
-                "home_team":        game_data['home_team'],
-                "away_team":        game_data['away_team'],
-                "home_player":      players['home_player'],
-                "away_player":      players['away_player'],
-                "coordinates":      play['coordinates'],
-                "zone":             _compute_zone(play['coordinates']['x'], play['about']['period'], players['winning_player']),
-                "home_score":       play['about']['goals']['home'],
-                "away_score":       play['about']['goals']['away'],
-                "power_play":       _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']),
-                "winning_player":   players['winning_player'],
-                "losing_player":    players['losing_player']
-            }
+            no = {}
+            no['game_id'] = str(game_data['game_id'])
+            no['season'] = game_data['season']
+            no['game_start_time'] = game_data['game_start_time']
+            no['game_tz'] = game_data['game_tz']
+            no['play_id'] = play['about']['eventIdx']
+            no['game_time'] = _game_time_to_seconds(play['about']['period'], play['about']['periodTime'])
+            no['description'] = play['result']['description']
+            no['period'] = str(play['about']['period'])
+            no['coordinates'] = "{0},{1}".format(play['coordinates']['x'], play['coordinates']['y'])
+            hp = no.copy()
+            ap = no.copy()
 
-            return_list.append(temp_object)
+            hp['player'] = players['home_player']
+            hp['team'] = game_data['home_team']
+            hp['opponent'] = players['away_player']
+            hp['opposing_team'] = game_data['away_team']
+            hp['home_ice'] = True
+            hp['power_play'] = ( game_data['home_team'] == _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']) )
+            hp['penelty_kill'] = ( game_data['away_team'] == _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']) )
+            hp['zone'] = _compute_zone(play['coordinates']['x'], play['about']['period'], players['home_player'])
+            hp['score_diff'] = play['about']['goals']['home'] - play['about']['goals']['away']
+            hp['win'] = ( players['winning_player'] == players['home_player'] )
+
+            ap['player'] = players['away_player']
+            ap['team'] = game_data['away_team']
+            ap['opponent'] = players['home_player']
+            ap['opposing_team'] = game_data['home_team']
+            ap['home_ice'] = False
+            ap['power_play'] = ( game_data['away_team'] == _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']) )
+            ap['penelty_kill'] = ( game_data['home_team'] == _on_powerplay(_game_time_to_seconds(play['about']['period'], play['about']['periodTime']), play['result']['eventTypeId']) )
+            ap['zone'] = _compute_zone(play['coordinates']['x'], play['about']['period'], players['away_player'])
+            ap['score_diff'] = play['about']['goals']['away'] - play['about']['goals']['home']
+            ap['win'] = ( players['winning_player'] == players['away_player'] )
+
+
+            return_list.append(hp)
+            return_list.append(ap)
 
     return return_list
 
 
-game_dict = load_game_file('api_data/game_2019020043.json')
+game_dict = load_game_file('api_data/game_2019020010.json')
 
 game_data = parse_game_data(game_dict)
 
