@@ -318,7 +318,7 @@ def parse_faceoff_data(data: dict) -> dict:
     return return_list
 
 
-game_dict = load_game_file('api_data/game_2019020010.json')
+game_dict = load_game_file('api_data/game_2019020043.json')
 
 game_data = parse_game_data(game_dict)
 
