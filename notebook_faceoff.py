@@ -16,7 +16,12 @@ df.tail(20)
 
 # %%
 
-df.groupby('player').agg({'player': ['count']}).reset_index()
+# as_index=False makes groupby more sql-ish
+df.groupby('player', sort=False, as_index=False) \
+    .count() \
+    .rename(columns={'game_id': 'count'}) \
+    .sort_values('count', ascending=False) \
+    .set_index('player')['count']
 
 # %%
 
