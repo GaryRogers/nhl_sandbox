@@ -238,28 +238,28 @@ def _compute_zone(x: float, period: int, winning_player: str) -> str:
     home_player = False
     home_player = ( winning_player in home_players )
 
-    if home_player:
-        if int(period) in [1,3]:
+    if int(period) in [1,3,5,7,9]:
+        if home_player:
             if x < -50:
-                return 'HOME_DEFENDING_ZONE'
+                return 'DEFENDING_ZONE'
             if x > 50:
-                return 'HOME_ATTACKING_ZONE'
-        if int(period) in [2, 4]:
+                return 'ATTACKING_ZONE'
+        else:
             if x < -50:
-                return 'HOME_ATTACKING_ZONE'
+                return 'ATTACKING_ZONE'
             if x > 50:
-                return 'HOME_DEFENDING_ZONE'
+                return 'DEFENDING_ZONE'
     else:
-        if int(period) in [1,3]:
+        if home_player:
             if x < -50:
-                return 'AWAY_ATTACKING_ZONE'
+                return 'ATTACKING_ZONE'
             if x > 50:
-                return 'AWAY_DEFENDING_ZONE'
-        if int(period) in [2, 4]:
+                return 'DEFENDING_ZONE'
+        else:
             if x < -50:
-                return 'AWAY_DEFENDING_ZONE'
+                return 'DEFENDING_ZONE'
             if x > 50:
-                return 'AWAY_ATTACKING_ZONE'
+                return 'ATTACKING_ZONE'
 
     return None
     
