@@ -8,6 +8,7 @@
 # - Something closer to olap
 
 import pandas as pd
+import matplotlib.pyplot as plt
 
 player = 'Patrice Bergeron'
 
@@ -42,7 +43,8 @@ temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
 
 temp_df['percent'] = (temp_df['win'] / temp_df['count']) * 100
 
-temp_df.round({'percent': 2}).sort_values('count', ascending=False).head(30)
+#temp_df.round({'percent': 2}).sort_values('count', ascending=False).head(30)
+temp_df.round({'percent': 2}).sort_values('count', ascending=False).plot()
 
 # %% 
 # Faceoff Stats by Zone
