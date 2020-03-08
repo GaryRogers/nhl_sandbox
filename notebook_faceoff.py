@@ -14,21 +14,66 @@ df = pd.read_csv('data/faceoff_data.csv')
 
 df.tail(20)
 
+player = 'Patrice Bergeron'
+
 # %%
+# Bruins games faceoff counts
 
 # as_index=False makes groupby more sql-ish
-df.groupby('player', sort=False, as_index=False) \
-    .count() \
+overall_df = df.groupby('player', sort=False, as_index=False) \
+    .agg({ 'game_id': 'count', 'win': 'sum' }) \
     .rename(columns={'game_id': 'count'}) \
+    .set_index('player')
+
+overall_df['percent'] = ( overall_df['win'] / overall_df['count']) * 100
+
+overall_df \
+    .round({'percent': 2}) \
     .sort_values('count', ascending=False) \
-    .set_index('player')['count']
+    .head(30)
 
 # %%
+# Faceoff Stats by Opponent
 
-df.loc[df['player'] == 'Patrice Bergeron'].groupby('zone')['zone'].count()
+pb_df = df.loc[df['player'] == player]
+
+oppo_df = pb_df \
+    .groupby('opponent', sort=False, as_index=False) \
+    .agg({ 'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('opponent')
+
+oppo_df['percent'] = (oppo_df['win'] / oppo_df['count']) * 100
+
+oppo_df.round({'percent': 2}) \
+    .sort_values('count', ascending=False) \
+    .head(30)
+
+# %% 
+# Faceoff Stats by Zone
+
+zone_df = df.loc[df['player'] == player] \
+    .groupby('zone', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('zone')
+
+zone_df['percent'] = ( zone_df['win'] / zone_df['count']) * 100
+
+zone_df.round({'percent': 2})
 
 # %%
+# Faceoff stats by period
 
-df.loc[(df['player'] == 'Patrice Bergeron') & (df['win'])].groupby('zone')['zone'].count()
+period_df = df.loc[df['player'] == player] \
+    .groupby('period', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('period')
+
+period_df['percent'] = ( period_df['win'] / period_df['count'] ) * 100
+
+period_df.round({'percent': 2})
+
 
 # %%
