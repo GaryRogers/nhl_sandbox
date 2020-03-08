@@ -8,26 +8,25 @@
 # - Something closer to olap
 
 import pandas as pd
-import json
-
-df = pd.read_csv('data/faceoff_data.csv')
-
-df.tail(20)
 
 player = 'Patrice Bergeron'
 
+faceoff_data = pd.read_csv('data/faceoff_data.csv')
+
+faceoff_data.tail(20)
+
 # %%
-# Bruins games faceoff counts
+# Bruins games faceoff stats
 
 # as_index=False makes groupby more sql-ish
-overall_df = df.groupby('player', sort=False, as_index=False) \
+temp_df = faceoff_data.groupby('player', sort=False, as_index=False) \
     .agg({ 'game_id': 'count', 'win': 'sum' }) \
     .rename(columns={'game_id': 'count'}) \
     .set_index('player')
 
-overall_df['percent'] = ( overall_df['win'] / overall_df['count']) * 100
+temp_df['percent'] = ( temp_df['win'] / temp_df['count']) * 100
 
-overall_df \
+temp_df \
     .round({'percent': 2}) \
     .sort_values('count', ascending=False) \
     .head(30)
@@ -35,45 +34,133 @@ overall_df \
 # %%
 # Faceoff Stats by Opponent
 
-pb_df = df.loc[df['player'] == player]
-
-oppo_df = pb_df \
+temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
     .groupby('opponent', sort=False, as_index=False) \
     .agg({ 'game_id': 'count', 'win': 'sum'}) \
     .rename(columns={'game_id': 'count'}) \
     .set_index('opponent')
 
-oppo_df['percent'] = (oppo_df['win'] / oppo_df['count']) * 100
+temp_df['percent'] = (temp_df['win'] / temp_df['count']) * 100
 
-oppo_df.round({'percent': 2}) \
-    .sort_values('count', ascending=False) \
-    .head(30)
+temp_df.round({'percent': 2}).sort_values('count', ascending=False).head(30)
 
 # %% 
 # Faceoff Stats by Zone
 
-zone_df = df.loc[df['player'] == player] \
+temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
     .groupby('zone', sort=False, as_index=False) \
     .agg({'game_id': 'count', 'win': 'sum'}) \
     .rename(columns={'game_id': 'count'}) \
     .set_index('zone')
 
-zone_df['percent'] = ( zone_df['win'] / zone_df['count']) * 100
+temp_df['percent'] = ( temp_df['win'] / temp_df['count']) * 100
 
-zone_df.round({'percent': 2})
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
 
 # %%
 # Faceoff stats by period
 
-period_df = df.loc[df['player'] == player] \
+temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
     .groupby('period', sort=False, as_index=False) \
     .agg({'game_id': 'count', 'win': 'sum'}) \
     .rename(columns={'game_id': 'count'}) \
     .set_index('period')
 
-period_df['percent'] = ( period_df['win'] / period_df['count'] ) * 100
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
 
-period_df.round({'percent': 2})
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
+
+# %%
+# Faceoff stats by Timezone
+
+temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
+    .groupby('game_tz', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('game_tz')
+
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
+
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
+
+# %%
+# Faceoff stats by opp_team
+
+temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
+    .groupby('opposing_team', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('opposing_team')
+
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
+
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
+
+# %%
+# Power Play Stats
+
+temp_df = faceoff_data.loc[(faceoff_data['player'] == player) & ( faceoff_data['power_play'] == True ) ] \
+    .groupby('power_play', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('power_play')
+
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
+
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
+
+# %%
+# Penalty Kill Stats
+
+temp_df = faceoff_data.loc[(faceoff_data['player'] == player) & ( faceoff_data['penelty_kill'] == True ) ] \
+    .groupby('penelty_kill', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('penelty_kill')
+
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
+
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
+
+# %%
+# 5 on 5 Stats
+
+temp_df = faceoff_data.loc[(faceoff_data['player'] == player) & ( faceoff_data['penelty_kill'] == False ) & ( faceoff_data['power_play'] == False ) ] \
+    .groupby('season', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('season')
+
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
+
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
+
+# %%
+# Home Ice Stats
+
+temp_df = faceoff_data.loc[(faceoff_data['player'] == player) & ( faceoff_data['home_ice'] == True ) ] \
+    .groupby('home_ice', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('home_ice')
+
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
+
+temp_df.round({'percent': 2}).sort_values('percent', ascending=False)
+
+
+# %%
+# Score Diff Stats
+
+temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
+    .groupby('score_diff', sort=False, as_index=False) \
+    .agg({'game_id': 'count', 'win': 'sum'}) \
+    .rename(columns={'game_id': 'count'}) \
+    .set_index('score_diff')
+
+temp_df['percent'] = ( temp_df['win'] / temp_df['count'] ) * 100
+
+temp_df.round({'percent': 2}).sort_values('score_diff', ascending=False)
 
 
 # %%
