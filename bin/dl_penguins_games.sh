@@ -93,5 +93,5 @@ games=(
 
 for game in ${games[@]}; do
     echo "Getting game $game"
-    ./nhl_import.py --type=game --key="$game" --directory=api_data
+    ../nhl_import.py --type=game --key="$game" --directory=../api_data
 done

@@ -4,5 +4,5 @@ games=(2019010015 2019010027 2019010039 2019010052 2019010067 2019010083 2019010
 
 for game in ${games[@]}; do
     echo "Getting game $game"
-    ./nhl_import.py --type=game --key="$game" --directory=api_data
+    ../nhl_import.py --type=game --key="$game" --directory=../api_data
 done
