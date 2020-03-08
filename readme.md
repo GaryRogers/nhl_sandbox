@@ -39,3 +39,43 @@ Example faceoff data:
     "win": false
 }
 ```
+
+## Notes
+
+Check out [iPython Interactive Widgets](https://ipywidgets.readthedocs.io/en/stable/)
+
+Teams to Load:
+
+'Tampa Bay Lightning'
+'Ottawa Senators'
+'Buffalo Sabres'
+'Carolina Hurricanes'
+--'Toronto Maple Leafs'
+-- 'Boston Bruins'
+'Detroit Red Wings'
+'Montréal Canadiens'
+
+
+'Columbus Blue Jackets'
+'Arizona Coyotes'
+'Florida Panthers'
+'Chicago Blackhawks'
+'New Jersey Devils'
+'New York Islanders'
+-- 'Pittsburgh Penguins'
+'St. Louis Blues'
+'Vancouver Canucks'
+'Winnipeg Jets'
+'Calgary Flames'
+'Philadelphia Flyers'
+'Dallas Stars'
+'Vegas Golden Knights'
+'Edmonton Oilers'
+'Los Angeles Kings'
+'Anaheim Ducks'
+'Minnesota Wild'
+'San Jose Sharks'
+'Nashville Predators'
+'New York Rangers'
+'Colorado Avalanche'
+--'Washington Capitals'

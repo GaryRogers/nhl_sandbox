@@ -10,7 +10,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-player = 'Auston Matthews'
+player = 'Brayden Point'
 
 faceoff_data = pd.read_csv('data/faceoff_data.csv')
 
