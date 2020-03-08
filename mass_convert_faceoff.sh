@@ -2,13 +2,13 @@
 
 cat /dev/null > data/faceoff_data.csv
 
-HEADERS=1
+HEADERS=True
 
 for filename in api_data/game*.json; do
     echo "converting $filename"
-    if [ "$HEADERS" -eq 1 ]; then
+    if [ "$HEADERS" == "True" ]; then
         ./extract_faceoff_data.py --input=$filename --format=csv --header >> data/faceoff_data.csv
-        HEADERS=0
+        HEADERS=False
     else
         ./extract_faceoff_data.py --input=$filename --format=csv >> data/faceoff_data.csv
     fi

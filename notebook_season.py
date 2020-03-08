@@ -8,6 +8,7 @@
 import pandas as pd
 from pandas.io.json import json_normalize
 import json
+from typing import List
 
 filename = 'api_data/season_20192020.json'
 
@@ -30,28 +31,46 @@ dates.head(20)
 # %%
 
 flat_games = []
+teams = []
 
 for i, d in dates.iterrows():
     for g in d['games']:
         tempObject = { "date": i, "game_id": g['gamePk'] }
         tempObject['away_team'] = g['teams']['away']['team']['name']
         tempObject['home_team'] = g['teams']['home']['team']['name']
+        if not tempObject['away_team'] in teams:
+            teams.append(tempObject['away_team'])
         flat_games.append(tempObject)
         
 flat_games_df = pd.DataFrame.from_dict(flat_games)
 flat_games_df.set_index('game_id', inplace=True)
 
-flat_games_df.head(20)
+#flat_games_df.head(20)
+
+print(teams)
 
 # %% [markdown]
 # Get Bruins games
 
 # %% [code]
-bruins_games = flat_games_df.loc[lambda g: (g['away_team'] == 'Boston Bruins') | (g['home_team'] == 'Boston Bruins')]
 
-bruins_games.head(20)
+def get_team_games(team: str) -> List[str]:
+    return flat_games_df.loc[lambda g: (g['away_team'] == team) | (g['home_team'] == team)].index.tolist()
 
-#bruins_games.index.tolist()
+# %%
 
+print(get_team_games('Boston Bruins'))
+
+# %%
+
+print(get_team_games('Pittsburgh Penguins'))
+
+# %%
+
+print(get_team_games('Washington Capitals'))
+
+# %%
+
+print(get_team_games('Toronto Maple Leafs'))
 
 # %%

@@ -386,18 +386,25 @@ def parse_player_data(data: dict) -> List[dict]:
     returnList = []
 
     for key, player in data['gameData']['players'].items():
-        if player['currentTeam']['triCode'] == game_data['home_team']:
-            home_players.append(player['fullName'])
-        else:
-            away_players.append(player['fullName'])
+        try:
+            # Deal with rookies that are in pre-season games, but don't get picked up
+            if 'currentTeam' in player:
+                if player['currentTeam']['triCode'] == game_data['home_team']:
+                    home_players.append(player['fullName'])
+                else:
+                    away_players.append(player['fullName'])
 
-        returnList.append({
-            "id": player['id'],
-            "fullName": player['fullName'],
-            "shootsCatches": player['shootsCatches'],
-            "team": player['currentTeam']['triCode'],
-            "primaryPosition": player['primaryPosition']['abbreviation']
-        })
+                returnList.append({
+                    "id": player['id'],
+                    "fullName": player['fullName'],
+                    "shootsCatches": player['shootsCatches'],
+                    "team": player['currentTeam']['triCode'],
+                    "primaryPosition": player['primaryPosition']['abbreviation']
+                })
+        except Exception as ex:
+            logger.error('Error converting player data for player:')
+            logger.error(player)
+            #logger.exception(ex)
 
     return returnList
 

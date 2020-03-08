@@ -96,6 +96,7 @@ bruins_game_ids = [
 def _prep_directory(directory: str):
     pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
 
+
 def import_conferences(**kwargs):
     args = { "directory": 'api_data' }
     
@@ -111,6 +112,7 @@ def import_conferences(**kwargs):
     file.write(response.text)
     file.close
 
+
 def import_divisions(**kwargs):
     args = { "directory": 'api_data' }
     
@@ -125,6 +127,7 @@ def import_divisions(**kwargs):
     file = open('{0}}/divisions.json'.format(args['directory']), 'w')
     file.write(response.text)
     file.close
+
 
 def import_game(game_id: int, **kwargs):
     args = { "directory": 'api_data', 'game_id': game_id }
@@ -147,6 +150,7 @@ def import_game(game_id: int, **kwargs):
         file = open('{0}/game_{1}.json'.format(args['directory'], args['game_id']), 'w')
         file.write(response.text)
         file.close
+
 
 def import_schedule(season: int, **kwargs):
     args = { "directory": 'api_data', 'season': season }
@@ -171,7 +175,8 @@ parser.add_argument('--directory', help='Directory to output to')
 
 args = parser.parse_args()
 
-if str(args.type).lower == 'game':
+if str(args.type).lower() == 'game':
+    print("Importing game {0}".format(args.key))
     import_game(args.key, directory=args.directory)
     exit(0)
 

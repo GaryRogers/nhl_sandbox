@@ -10,14 +10,14 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-player = 'Patrice Bergeron'
+player = 'Auston Matthews'
 
 faceoff_data = pd.read_csv('data/faceoff_data.csv')
 
 faceoff_data.tail(20)
 
 # %%
-# Bruins games faceoff stats
+# Faceoff stats
 
 # as_index=False makes groupby more sql-ish
 temp_df = faceoff_data.groupby('player', sort=False, as_index=False) \
@@ -43,8 +43,8 @@ temp_df = faceoff_data.loc[faceoff_data['player'] == player] \
 
 temp_df['percent'] = (temp_df['win'] / temp_df['count']) * 100
 
-#temp_df.round({'percent': 2}).sort_values('count', ascending=False).head(30)
-temp_df.round({'percent': 2}).sort_values('count', ascending=False).plot()
+temp_df.round({'percent': 2}).sort_values('count', ascending=False).head(30)
+#temp_df.round({'percent': 2}).sort_values('count', ascending=False).plot()
 
 # %% 
 # Faceoff Stats by Zone
